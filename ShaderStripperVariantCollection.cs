@@ -24,6 +24,8 @@ namespace Sigtrap.Editors.ShaderStripper {
 
 		[SerializeField][Tooltip("Shaders matching these names will be ignored (not stripped)")]
 		StringMatch[] _ignoreShadersByName;
+		[SerializeField][Tooltip("These passtypes will be ignored (not stripped)")]
+		List<PassType> _ignorePassTypes;
 
 		bool _valid = false;
 
@@ -236,6 +238,8 @@ namespace Sigtrap.Editors.ShaderStripper {
 			foreach (var s in _ignoreShadersByName){
 				if (s.Evaluate(shader.name)) return true;
 			}
+			// Ignore passes by type
+			if (_ignorePassTypes.Contains(passData.passType)) return true;
 
             // Try to match shader
             Dictionary<PassType, List<ShaderVariantCollection.ShaderVariant>> variantsByPass = null;
@@ -252,13 +256,7 @@ namespace Sigtrap.Editors.ShaderStripper {
                         // Fill temp buffer to fill OTHER temp buffer each time SIGH
                         _tempKeywordsToMatchCached.Clear();
                         foreach (var sk in variantIn.shaderKeywordSet.GetShaderKeywords()){
-							#if UNITY_2018_3_OR_NEWER
-							string sn = sk.GetKeywordName();
-							#else
-							string sn = sk.GetName();
-							#endif
-							
-                            _tempKeywordsToMatchCached.Add(sn);
+                            _tempKeywordsToMatchCached.Add(GetKeywordName(sk));
                         }
                         bool variantMatched = false;
 

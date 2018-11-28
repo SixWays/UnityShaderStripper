@@ -11,6 +11,33 @@ using UnityEditor.Rendering;
 #endif
 
 namespace Sigtrap.Editors.ShaderStripper {
+	public class ShaderLog {
+		public List<string> log = new List<string>();
+		public string logName {get; private set;}
+
+		public int Count {get {return log.Count;}}
+
+		public ShaderLog(string logName){
+			this.logName = logName;
+		}
+
+		public void Add(string s){
+			log.Add(s);
+		}
+		public void Clear(){
+			log.Clear();
+		}
+		public void Insert(int index, string s){
+			log.Insert(index, s);
+		}
+		public bool Contains(string s){
+			return log.Contains(s);
+		}
+		public string[] ToArray(){
+			return log.ToArray();
+		}
+	}
+
 	/// <summary>
 	/// Base class for stripping shaders.
 	/// </summary>
@@ -42,37 +69,42 @@ namespace Sigtrap.Editors.ShaderStripper {
 		#region Static
 		#if UNITY_EDITOR
 		static List<string> _log = new List<string>();
+		public static string GetKeywordName(ShaderKeyword k){
+			#if UNITY_2018_3_OR_NEWER
+			return k.GetKeywordName();
+			#else
+			return = k.GetName();
+			#endif
+		}
 		public static void OnPreBuild(){
 			_log.Clear();
 		}
-		public static void OnPostBuild(string logFolderPath, List<string> kept){
+		public static void OnPostBuild(string logFolderPath, string header, params ShaderLog[] logs){
 			if (!string.IsNullOrEmpty(logFolderPath)){
 				string logPath = logFolderPath;
 				if (!logPath.EndsWith("/") && !logPath.EndsWith("\\")){
 					logPath += "/";
 				}
+				
 				string date = System.DateTime.Now.ToString("yyyy-MM-dd");
-				string strippedLog = string.Format(
-					"{0}ShaderStripperLog_STRIPPED_{1}.txt", 
+				string strippedLogFile = string.Format(
+					"{0}ShaderStripperLog_{1}_SHADERS-STRIPPED.txt", 
 					logPath, date						
 				);
-				string keptLog = string.Format(
-					"{0}ShaderStripperLog_KEPT_{1}.txt", 
-					logPath, date
-				);
+				_log.Insert(0, header);
+				System.IO.File.WriteAllLines(strippedLogFile, _log.ToArray());
 
-				bool created = false;
-				if (_log.Count > 0){
-					System.IO.File.WriteAllLines(strippedLog, _log.ToArray());
-					created = true;
+				foreach (var l in logs){
+					if (l != null && l.Count > 0){
+						l.Insert(0, header);
+						string logFile = string.Format(
+							"{0}ShaderStripperLog_{1}_{2}.txt", 
+							logPath, date, l.logName
+						);
+						System.IO.File.WriteAllLines(logFile, l.ToArray());
+					}
 				}
-				if (kept.Count > 1){
-					System.IO.File.WriteAllLines(keptLog, kept.ToArray());
-					created = true;
-				}
-				if (created){
-					Debug.Log("ShaderStripper logs created at "+logPath);
-				}
+				Debug.Log("ShaderStripper logs created at "+logPath);
 			}
 			_log.Clear();
 		}
