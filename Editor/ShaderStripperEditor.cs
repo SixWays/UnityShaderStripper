@@ -98,6 +98,10 @@ namespace Sigtrap.Editors.ShaderStripper {
 				_scroll = EditorGUILayout.BeginScrollView(_scroll, EditorStyles.helpBox); {
 					for (int i=0; i<_strippers.Count; ++i){
 						var s = _strippers[i];
+						if (s == null){
+							RefreshSettings();
+							break;
+						}
 						var so = new SerializedObject(s);
 						var active = so.FindProperty("_active");
 						GUI.backgroundColor = Color.Lerp(Color.grey, Color.red, active.boolValue ? 0 : 1);
