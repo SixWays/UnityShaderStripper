@@ -68,6 +68,7 @@ namespace Sigtrap.Editors.ShaderStripper {
 
 		#region Static
 		#if UNITY_EDITOR
+		static bool _deepLogs = false;
 		static List<string> _log = new List<string>();
 		public static string GetKeywordName(ShaderKeyword k){
 			#if UNITY_2018_3_OR_NEWER
@@ -76,8 +77,9 @@ namespace Sigtrap.Editors.ShaderStripper {
 			return = k.GetName();
 			#endif
 		}
-		public static void OnPreBuild(){
+		public static void OnPreBuild(bool deepLogs){
 			_log.Clear();
+			_deepLogs = deepLogs;
 		}
 		public static void OnPostBuild(string logFolderPath, string header, params ShaderLog[] logs){
 			if (!string.IsNullOrEmpty(logFolderPath)){
@@ -88,7 +90,7 @@ namespace Sigtrap.Editors.ShaderStripper {
 				
 				string date = System.DateTime.Now.ToString("yyyy-MM-dd");
 				string strippedLogFile = string.Format(
-					"{0}ShaderStripperLog_{1}_SHADERS-STRIPPED.txt", 
+					"{0}ShaderStripperLog_{1}.txt", 
 					logPath, date						
 				);
 				_log.Insert(0, header);
@@ -116,12 +118,32 @@ namespace Sigtrap.Editors.ShaderStripper {
 			);
 			_log.Add(log);
 		}
-		static protected void LogRemoval(ShaderStripperBase stripper, Shader shader, ShaderSnippetData pass, int variantIndex, int variantCount){
+		static protected void LogRemoval(ShaderStripperBase stripper, Shader shader, ShaderSnippetData pass, int variantIndex, int variantCount, ShaderCompilerData variant){
 			if (!stripper._logOutput) return;
-			string log = string.Format(
-				"Stripping shader [{0}] pass type [{1}] variant [{2}/{3}]\n\tShaderStripper: {4}",
-				shader.name, pass.passType, variantIndex, variantCount-1, stripper.name
-			);
+			string log = null;
+			if (_deepLogs){
+				log = string.Format(
+					"Stripping shader [{0}] pass type [{1}] variant [{2}/{3}] [{4}]\n\tShaderStripper: {5}\n\tKeywords:",
+					shader.name, pass.passType, variantIndex, variantCount-1, variant.graphicsTier, stripper.name
+				);
+				var ks = variant.shaderKeywordSet.GetShaderKeywords();
+				
+				if (ks != null && ks.Length > 0){
+					bool first = true;
+					foreach (var k in variant.shaderKeywordSet.GetShaderKeywords()){
+						if (!first) log += ",";
+						log += " " + GetKeywordName(k);
+						first = false;
+					}
+				} else {
+					log += " <no keywords>";
+				}
+			} else {
+				log = string.Format(
+					"Stripping shader [{0}] pass type [{1}] variant [{2}/{3}]\n\tShaderStripper: {4}",
+					shader.name, pass.passType, variantIndex, variantCount-1, stripper.name
+				);
+			}
 			_log.Add(log);
 		}
 		static protected void LogMessage(ShaderStripperBase stripper, string message, MessageType type=MessageType.None){
@@ -226,7 +248,7 @@ namespace Sigtrap.Editors.ShaderStripper {
 							int c = variantData.Count;
 							for (int i=variantData.Count-1; i>=0; --i){
 								if (MatchVariant(variantData[i])){
-									LogRemoval(this, shader, passData, i, c);
+									LogRemoval(this, shader, passData, i, c, variantData[i]);
 									variantData.RemoveAt(i);
 								}
 							}
@@ -241,7 +263,6 @@ namespace Sigtrap.Editors.ShaderStripper {
 			return initialVariants - variantData.Count;
 		}
 
-		
 		/// <summary>
 		/// Override to get a callback before the build starts.
 		/// <summary>
@@ -279,6 +300,7 @@ namespace Sigtrap.Editors.ShaderStripper {
 		protected virtual bool MatchVariant(ShaderCompilerData variantData){
 			throw new System.NotImplementedException("If _checkVariants is true, must override MatchVariant()");
 		}
+		public virtual void OnGUI(){}
 		#endif
 		#endregion
 	}

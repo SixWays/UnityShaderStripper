@@ -17,8 +17,12 @@ namespace Sigtrap.Editors.ShaderStripper {
 
 		[MenuItem("Tools/Sigtrap/Shader Stripper")]
 		public static void Launch(){
-			EditorWindow.GetWindow<ShaderStripperEditor>().Show();
+			if (_i == null){
+				_i = ScriptableObject.CreateInstance<ShaderStripperEditor>();
+			}
+			_i.Show();
 		}
+		static ShaderStripperEditor _i;
 
 		static bool _enabled;
 		static bool _deepLogs;
@@ -110,6 +114,10 @@ namespace Sigtrap.Editors.ShaderStripper {
 				_scroll = EditorGUILayout.BeginScrollView(_scroll, EditorStyles.helpBox); {
 					for (int i=0; i<_strippers.Count; ++i){
 						var s = _strippers[i];
+						if (s == null){
+							RefreshSettings();
+							break;
+						}
 						var so = new SerializedObject(s);
 						var active = so.FindProperty("_active");
 						GUI.backgroundColor = Color.Lerp(Color.grey, Color.red, active.boolValue ? 0 : 1);
@@ -161,6 +169,8 @@ namespace Sigtrap.Editors.ShaderStripper {
 									EditorGUILayout.PropertyField(sp, true);
 								}
 							}
+
+							s.OnGUI();
 						} EditorGUILayout.EndVertical();
 						EditorGUILayout.Space();
 
@@ -206,7 +216,7 @@ namespace Sigtrap.Editors.ShaderStripper {
 				_keptLog.Clear();
 				_keptLog.Add("Unstripped Shaders:");
 				RefreshSettings();
-				ShaderStripperBase.OnPreBuild();
+				ShaderStripperBase.OnPreBuild(_deepLogs);
 				foreach (var s in _strippers){
 					if (s.active){
 						s.Initialize();
@@ -218,7 +228,8 @@ namespace Sigtrap.Editors.ShaderStripper {
 			} else {
 				Debug.Log("ShaderStripper DISABLED");
 			}
-		}
+		} 
+		static readonly BuiltinShaderDefine[] _platformKeywords = (BuiltinShaderDefine[])System.Enum.GetValues(typeof(BuiltinShaderDefine));
 		public void OnProcessShader(Shader shader, ShaderSnippetData snippet, IList<ShaderCompilerData> data){
 			if (!_enabled) return;
 			_rawCount += data.Count;
@@ -255,10 +266,30 @@ namespace Sigtrap.Editors.ShaderStripper {
 			_swStrip.Stop();
 			if (data.Count > 0){
 				_keptCount += data.Count;
-				_keptLog.Add(string.Format("    {0}::[{1}]{2} [{3} variants]", shader.name, snippet.passType, snippet.passName, data.Count));
+				_keptLog.Add(string.Format(
+					"    {0}::[{1}]{2} [{3} variants]", shader.name, 
+					snippet.passType, snippet.passName, data.Count
+				));
 
 				if (_deepLogs){
 					foreach (var d in data){
+						string varLog = string.Format(
+							"\t\t[{0}][{1}] ", d.graphicsTier, d.shaderCompilerPlatform
+						);
+						foreach (var k in d.shaderKeywordSet.GetShaderKeywords()){
+							varLog += ShaderStripperBase.GetKeywordName(k) + " ";
+						}
+
+						varLog += "\n\t\t\t";
+						foreach (var b in _platformKeywords){
+							if (d.platformKeywordSet.IsEnabled(b)){
+								varLog += b.ToString() + " ";
+							}
+						}
+
+						varLog += string.Format("\n\t\t\tREQ: {0}", d.shaderRequirements.ToString());
+						_keptLog.Add(varLog);
+
 						foreach (var k in d.shaderKeywordSet.GetShaderKeywords()){
 							string sn = ShaderStripperBase.GetKeywordName(k);
 							if (!_keptKeywords.Contains(sn)){
