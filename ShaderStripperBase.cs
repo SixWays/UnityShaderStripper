@@ -74,7 +74,7 @@ namespace Sigtrap.Editors.ShaderStripper {
 			#if UNITY_2018_3_OR_NEWER
 			return k.GetKeywordName();
 			#else
-			return = k.GetName();
+			return k.GetName();
 			#endif
 		}
 		public static void OnPreBuild(bool deepLogs){
