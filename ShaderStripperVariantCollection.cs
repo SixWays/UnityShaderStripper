@@ -1,4 +1,4 @@
-﻿#if UNITY_2018_2_OR_NEWER
+#if UNITY_2018_2_OR_NEWER
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -82,6 +82,7 @@ namespace Sigtrap.Editors.ShaderStripper {
 		bool ShaderVariantsEqual(ShaderVariantCollection.ShaderVariant a, ShaderVariantCollection.ShaderVariant b){
 			if (a.shader != b.shader || a.passType != b.passType) return false;
 			if ((a.keywords == null) != (b.keywords == null)) return false;
+            if (a.keywords == null && b.keywords == null) return true;
 			if (a.keywords.Length != b.keywords.Length) return false;
 			_tempCompareShaderVariants.Clear();
 			_tempCompareShaderVariants.AddRange(a.keywords);
@@ -410,22 +411,30 @@ namespace Sigtrap.Editors.ShaderStripper {
 
                         // Loop over cached variants
                         foreach (var collectedVariant in collectedPassVariants){
+
                             // Must match ALL keywords
                             _tempRequestedKeywordsToMatch.Clear();
                             _tempRequestedKeywordsToMatch.AddRange(_tempRequestedKeywordsToMatchCached);
 
-                            // Early out (no match) if keyword counts don't match
-                            if (_tempRequestedKeywordsToMatch.Count != collectedVariant.keywords.Length) continue;
-
                             // Early out (match) if both have no keywords
-                            if (_tempRequestedKeywordsToMatch.Count == 0 && collectedVariant.keywords.Length == 0){
+                            if (_tempRequestedKeywordsToMatch.Count == 0 && (collectedVariant.keywords == null || collectedVariant.keywords.Length == 0))
+                            {
                                 variantMatched = true;
                                 break;
                             }
 
+                            // No match
+                            if (collectedVariant.keywords == null)
+                                continue;
+
+                            // Early out (no match) if keyword counts don't match
+                            if (_tempRequestedKeywordsToMatch.Count != collectedVariant.keywords.Length) 
+                                continue;
+
                             // Check all keywords
 							_tempCollectedKeywordsSorted.Clear();
-							_tempCollectedKeywordsSorted.AddRange(collectedVariant.keywords);
+							if (collectedVariant.keywords != null)
+                                _tempCollectedKeywordsSorted.AddRange(collectedVariant.keywords);
 							_tempCollectedKeywordsSorted.Sort((a,b)=>{return string.CompareOrdinal(a,b);});
                             foreach (var k in _tempCollectedKeywordsSorted){
                                 bool keywordMatched = _tempRequestedKeywordsToMatch.Remove(k);
