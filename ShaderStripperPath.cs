@@ -29,7 +29,7 @@ namespace Sigtrap.Editors.ShaderStripper {
             foreach (var p in _pathBlacklist){
                 if (p.Evaluate(path)) return true;
             }
-            return true;
+            return false;
         }
         #endif
     }
