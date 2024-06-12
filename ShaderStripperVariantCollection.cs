@@ -145,6 +145,19 @@ namespace Sigtrap.Editors.ShaderStripper {
 
 						// Move to variants contents (skip current line, "second:" and "variants:")
 						i += 3;
+
+						// it's possible for the variants array to be empty (represented by `variants: []`)
+						if (i >= yaml.Count) {
+							// this was the final entry, we've reached EOF
+							break;
+						}
+
+						if (GetYamlIndent(yaml[i]) == indent) {
+							// the variants array was empty and we're now on the `- first:` line of the next entry
+							i -= 1; // decrement here because the loop will increment
+							continue;
+						}
+
 						indent = GetYamlIndent(yaml[i]);
 						var sv = new ShaderVariantCollection.ShaderVariant();
 						for (; i<yaml.Count; ++i){
