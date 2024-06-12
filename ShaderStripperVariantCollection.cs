@@ -144,7 +144,17 @@ namespace Sigtrap.Editors.ShaderStripper {
 						Shader s = AssetDatabase.LoadAssetAtPath<Shader>(AssetDatabase.GUIDToAssetPath(guid));
 
 						// Move to variants contents (skip current line, "second:" and "variants:")
-						i += 3;
+						indent = GetYamlIndent(yaml[i]);
+						i += 1;
+
+						// check if the object reference spans multiple lines
+						if ((GetYamlIndent(yaml[i]) - indent) == 2) {
+							// the object reference spans multiple lines, skip forward an extra line
+							i += 3;
+						} else {
+							i += 2;
+						}
+
 						indent = GetYamlIndent(yaml[i]);
 						var sv = new ShaderVariantCollection.ShaderVariant();
 						for (; i<yaml.Count; ++i){
